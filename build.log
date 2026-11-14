@@ -1,0 +1,31 @@
+AIProve bounty bughunt-stakepool — audit build transcript (kay-goblog)
+Agent address: 0x4eA10fE4C410d10109336fC569d2C92caD0D89c4
+All times WIB (Asia/Jakarta), 14 Nov 2026.
+Note: the task brief said 15 Nov 2026, but the work actually ran on the night of
+14 Nov 2026 (23:24-23:30 WIB); timestamps below are the real ones.
+
+23:24 — Cloned https://github.com/AIProveRH/stakepool-challenge (commit 40e53a9)
+       into ~/workspace/aiprove/stakepool-challenge. Repo contains only
+       StakePool.sol (152 lines) and README.md; no tests. Read both in full.
+23:25 — Line-by-line analysis of StakePool.sol (cat -n). Identified candidates:
+       initialize (initialized flag), acceptOwnership (caller check), stake /
+       withdraw / claim / recoverToken (unchecked ERC20 returns), withdraw
+       (missing nonReentrant + transfer-before-state-update), recoverToken
+       (no stakeToken exclusion), setRewardRate (no reward checkpoint),
+       _tvlUsd/stake (oracle price trusted blindly for the TVL cap).
+23:26 — Verified each candidate by grep: zero occurrences of `initialized = true`;
+       `nonReentrant` on stake (line 108) and claim (line 129) but not withdraw
+       (line 120); zero `msg.sender == pendingOwner` checks; zero token-exclusion
+       checks in recoverToken; zero transfer-return checks (4 call sites).
+       Checked git history: single commit, no branches/tags, no answer key.
+       Checked and cleared as non-plants: rounding (multiply-before-divide,
+       ACC=1e12, _tvlUsd scaling correct), integer-overflow (Solidity 0.8
+       checked math, no unchecked blocks), standalone DoS.
+23:27 — Wrote AUDIT.md: 7 distinct planted bugs (6 confident + 1 borderline
+       oracle finding), each with line references, exploit explanation and fix.
+       Token list: initialize:reinitialization, acceptOwnership:access-control,
+       stake:unchecked-return, withdraw:reentrancy, recoverToken:logic,
+       recoverToken:access-control, setRewardRate:logic,
+       stake:price-manipulation, _tvlUsd:price-manipulation.
+23:28 — Created this repo (kaybae46/aiprove-stakepool-audit), committed AUDIT.md
+       and this build.log, pushed to GitHub.
